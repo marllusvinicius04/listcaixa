@@ -2803,7 +2803,7 @@ for(const [id,d] of Object.entries(paths)){const b=el(id);if(!b)continue;b.query
 // Endereço do serviço ListCaixa.
 // O servidor exige LC_API_KEY para consultar/gravar dados. Nunca publique essa chave no HTML.
 window.LISTCAIXA_API = {
-  url: 'https://script.google.com/macros/s/AKfycbzGyQTR44YR_oYIa9ye6lNnp35DH-O5JSTAWQiYAO411p_A2mmbEZi4wa2ZkDbXRxBi/exec',
+  url: 'https://script.google.com/macros/s/AKfycbz8_z0eJ6kgV2MhpNlJFynkRrD2N_C3gYHPgtgVm6lFM08OTQUxQGc2RUH-4Cbvrcmq/exec',
   mode: 'cloud',
   storage: 'cloud',
   connected: false
@@ -2994,6 +2994,7 @@ window.listCaixaTestarServidor = async function() {
     if(!event.matches && more.open) more.close();
   });
 })();
+
 
 ;
 /* ZXing Browser 0.1.5 and bundled ZXing JS
