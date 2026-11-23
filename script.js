@@ -3401,16 +3401,29 @@ nuclear facility.
    $('mensaisBalance').textContent=money(total-received);
    $('mensaisPending').textContent=String(entries.filter(v=>v.balance>0).length);
    $('mensaisStatus').textContent=entries.length?'':'Nenhuma mensalidade nesta competência.';
-   list.replaceChildren(...entries.map(item=>{
+   const query=norm($('mensaisSearch').value);
+   const filter=$('mensaisFilter').value;
+   const statusKey=item=>item.balance===0?'paid':item.received>0?'partial':'pending';
+   const visible=entries.filter(item=>(filter==='all'||filter===statusKey(item))&&
+     norm([item.c.name,item.c.document,item.c.phone].join(' ')).includes(query))
+     .sort((a,b)=>Number(a.balance===0)-Number(b.balance===0)||a.due.localeCompare(b.due)||a.c.name.localeCompare(b.c.name,'pt-BR'));
+   if(entries.length&&!visible.length)$('mensaisStatus').textContent='Nenhum cliente corresponde aos filtros.';
+   list.replaceChildren(...visible.map(item=>{
      const row=node('article',undefined,'lc-month-card');
      const head=node('div',undefined,'row');
      const label=item.balance===0?'Pago':item.received>0?'Parcial':'Pendente';
-     head.append(node('strong',item.c.name),node('span',label,'pill'));
+     head.append(node('strong',item.c.name),node('span',label,'pill lc-month-pill '+statusKey(item)));
      const actions=node('div',undefined,'row lc-month-actions');
      actions.append(button('Recebimento',()=>editPayment(item)),button('Editar',()=>editClient(item.c)),button('Excluir',()=>archive(item.c),'danger'));
      if(item.balance>0)actions.prepend(button('Baixar cobrança em PDF',()=>charge(item),'primary'));
+     const details=node('dl',undefined,'lc-month-details');
+     for(const [name,value] of [['Vencimento',monthlyDate(item.due)],['Mensalidade',money(item.amount)],['Recebido',money(item.received)],['Saldo',money(item.balance)]]){
+       const detail=node('div');
+       detail.append(node('dt',name),node('dd',value));
+       details.append(detail);
+     }
      row.append(head,node('p',[item.c.kind,item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' · '),'hint'),
-       node('p','Vence em '+monthlyDate(item.due)+' · Mensalidade '+money(item.amount)+' · Recebido '+money(item.received)+' · Saldo '+money(item.balance)),actions);
+       details,actions);
      return row;
    }));
  }
@@ -3466,76 +3479,15 @@ nuclear facility.
      const pix={...source,pixKey:normalizePixKey(source.pixKey)};
      const reference=('M'+item.period+item.c.id).replace(/[^a-z0-9]/gi,'').slice(0,25);
      const code=pixPayload(pix,item.balance,reference,'Mensalidade '+item.period);
-     download('ListCaixa_Cobranca_'+item.period+'_'+item.c.id+'.pdf','application/pdf',makeChargePdf(item,pix,code));
+     download('ListCaixa_Cobranca_'+item.period+'_'+item.c.id+'.pdf','application/pdf',lcMonthlyGuide(item,pix,code));
      $('mensaisStatus').textContent='Documento de cobrança gerado.';
    }catch(err){$('mensaisStatus').textContent=err.message;}
- }
- function makeChargePdf(item,pix,code){
-   const profile=store(), commands=[];
-   function escape(value){
-     return Array.from(String(value),char=>{
-       const n=char.charCodeAt(0);
-       if(n>255)return '?';
-       return n<32||n>126||/[()\\]/.test(char)?'\\'+n.toString(8).padStart(3,'0'):char;
-     }).join('');
-   }
-   function text(value,x,y,size=11,bold=false,color='0.16 0.09 0.20'){
-     commands.push('BT /'+(bold?'F2':'F1')+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
-   }
-   function block(value,y,width=76,size=11){
-     const lines=String(value).match(new RegExp('.{1,'+width+'}','g'))||[];
-     lines.forEach((line,index)=>text(line,36,y-index*14,size));
-     return y-lines.length*14;
-   }
-   commands.push('0.19 0.07 0.25 rg 0 742 595 100 re f');
-   text('LISTCAIXA  /  CONTAS A RECEBER',36,807,10,true,'1 1 1');
-   text('Documento de cobrança mensal',36,771,24,true,'1 1 1');
-   text('EMITENTE',36,712,10,true);
-   let y=block(profile.storeName,692);
-   y=block([profile.taxId,profile.phone,profile.address].filter(Boolean).join(' | '),y);
-   text('CLIENTE',36,y-12,10,true);
-   y=block(item.c.name,y-30);
-   y=block([item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' | '),y);
-   text('Competência '+item.period+'     Vencimento '+monthlyDate(item.due),36,y-12,11,true);
-   text('Mensalidade '+money(item.amount)+'     Já recebido '+money(item.received),36,y-32);
-   text('SALDO A PAGAR  '+money(item.balance),36,y-62,18,true);
-   y-=93;
-   text('PAGAMENTO POR PIX',36,y,11,true);
-   y=block('Recebedor: '+pix.receiver,y-18);
-   y=block('Chave Pix: '+pix.pixKey,y);
-   y=block([pix.bank,pix.city].filter(Boolean).join(' | '),y);
-   const qr=new PixQRCode(-1,1);
-   qr.addData(code);qr.make();
-   const count=qr.getModuleCount(),scale=132/(count+8), qy=y-140;
-   commands.push('1 1 1 rg 36 '+qy+' 132 132 re f','0 0 0 rg');
-   for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c)){
-     commands.push((36+(c+4)*scale).toFixed(5)+' '+(qy+(count-r+3)*scale).toFixed(5)+' '+scale.toFixed(5)+' '+scale.toFixed(5)+' re');
-   }
-   commands.push('f');
-   text('Pix Copia e Cola',36,qy-14,10,true);
-   block(code,qy-30,88,9);
-   text('Documento de cobrança. Sem valor fiscal. Pagamento sujeito à conferência.',36,29,9);
-   const stream=commands.join('\n')+'\n';
-   const objects=[
-     '<< /Type /Catalog /Pages 2 0 R >>',
-     '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
-     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
-     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
-     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-     '<< /Length '+stream.length+' >>\nstream\n'+stream+'endstream'
-   ];
-   let pdf='%PDF-1.4\n';
-   const offsets=['0000000000 65535 f \n'];
-   objects.forEach((object,index)=>{
-     offsets.push(String(pdf.length).padStart(10,'0')+' 00000 n \n');
-     pdf+=(index+1)+' 0 obj\n'+object+'\nendobj\n';
-   });
-   const xref=pdf.length;
-   return pdf+'xref\n0 '+offsets.length+'\n'+offsets.join('')+'trailer\n<< /Size '+offsets.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
  }
  $('mensaisNew').onclick=()=>editClient(null);
  $('mensaisReload').onclick=refresh;
  month.onchange=render;
+ $('mensaisSearch').oninput=render;
+ $('mensaisFilter').onchange=render;
  form('mensaisClientForm',values=>{
    const client={...values,amount:requireAmount(values.amount,true),day:Number(values.day)};
    mutate('save',editing,{client},$('mensaisClient'),'mensaisClientError');
@@ -3545,4 +3497,156 @@ nuclear facility.
  $('mensaisUnpaid').onclick=()=>{
    if(collecting.received===0||confirm('Zerar o valor recebido desta mensalidade?'))setPayment(0);
  };
+})();
+
+
+function lcDocumentPdf(title, build){
+ const commands=[];
+ const ink='0.17 0.09 0.22', muted='0.34 0.31 0.38', paper='0.97 0.94 0.99';
+ const safe=s=>Array.from(String(s).normalize('NFC'),char=>{
+   const n=char.charCodeAt(0);
+   return n>255?'?':n<32||n>126||/[()\\]/.test(char)?'\\'+n.toString(8).padStart(3,'0'):char;
+ }).join('');
+ function text(value,x,y,size=11,bold=false,color=ink,font){
+   commands.push('BT /'+(font||(bold?'F2':'F1'))+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+safe(value)+') Tj ET');
+ }
+ function rectangle(x,y,w,h,color=paper,outline=false){
+   commands.push(color+(outline?' RG ':' rg ')+[x,y,w,h].join(' ')+' re '+(outline?'S':'f'));
+ }
+ function lines(value,x,y,max=75,size=11){
+   const chunks=String(value||'').trim().replace(/\s+/g,' ').match(new RegExp('.{1,'+max+'}(?: |$)|.{1,'+max+'}','g'))||[];
+   chunks.forEach((line,i)=>text(line.trim(),x,y-i*14,size));
+   return y-Math.max(1,chunks.length)*14;
+ }
+ function cell(label,value,x,y,w,h=49){
+   rectangle(x,y,w,h,'0.82 0.77 0.85',true);
+   text(label,x+10,y+h-14,9,true,muted);
+   lines(value,x+10,y+h-31,Math.max(12,Math.floor((w-20)/6)),11);
+ }
+ function qr(payload,x,y,size){
+   const code=new PixQRCode(-1,1);
+   code.addData(payload);code.make();
+   const n=code.getModuleCount(),unit=size/(n+8);
+   rectangle(x,y,size,size,'1 1 1');
+   commands.push('0 0 0 rg');
+   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(code.isDark(r,c)){
+     commands.push([x+(c+4)*unit,y+(n-r+3)*unit,unit,unit].map(v=>v.toFixed(5)).join(' ')+' re');
+   }
+   commands.push('f');
+ }
+ commands.push('q 141 0 0 47 36 770 cm /Logo Do Q');
+ text(title,36,741,25,true);
+ rectangle(36,723,523,2,'0.36 0.15 0.49');
+ build({text,rectangle,lines,cell,qr});
+ const stream=commands.join('\n')+'\n', logo=atob(LC_PDF_LOGO);
+ const objects=[
+   '<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
+   '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R /F3 8 0 R >> /XObject << /Logo 7 0 R >> >> /Contents 6 0 R >>',
+   '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+   '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+   '<< /Length '+stream.length+' >>\nstream\n'+stream+'endstream',
+   '<< /Type /XObject /Subtype /Image /Width '+LC_LOGO_WIDTH+' /Height '+LC_LOGO_HEIGHT+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+logo.length+' >>\nstream\n'+logo+'\nendstream',
+   '<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>'
+ ];
+ let pdf='%PDF-1.4\n';
+ const offsets=['0000000000 65535 f \n'];
+ for(const [index,object] of objects.entries()){
+   offsets.push(String(pdf.length).padStart(10,'0')+' 00000 n \n');
+   pdf+=(index+1)+' 0 obj\n'+object+'\nendobj\n';
+ }
+ const xref=pdf.length;
+ return pdf+'xref\n0 '+offsets.length+'\n'+offsets.join('')+'trailer\n<< /Size '+offsets.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+}
+
+function lcMonthlyGuide(item,pix,code){
+ const company=store();
+ return lcDocumentPdf('Guia de pagamento',({text,rectangle,lines,cell,qr})=>{
+   text('COBRANÇA MENSAL VIA PIX',410,785,10,true);
+   cell('COMPETÊNCIA',item.period,36,656,170);
+   cell('VENCIMENTO',monthlyDate(item.due),206,656,170);
+   cell('VALOR A PAGAR',money(item.balance),376,656,183);
+   cell('EMITENTE',[company.storeName,company.taxId,company.phone].filter(Boolean).join(' | '),36,582,523,68);
+   cell('PAGADOR',[item.c.name,item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' | '),36,488,523,88);
+   cell('VALOR DA MENSALIDADE',money(item.amount),36,432,262);
+   cell('TOTAL JÁ RECEBIDO',money(item.received),298,432,261);
+   rectangle(36,221,523,191);
+   text('PAGAMENTO POR PIX',51,389,12,true);
+   text('Escaneie o QR Code no aplicativo do seu banco.',51,365,11);
+   text('Confira o recebedor e o saldo antes de confirmar.',51,348,10);
+   text('RECEBEDOR',51,323,9,true);
+   const end=lines([pix.receiver,pix.bank,pix.city].filter(Boolean).join(' | '),51,305,52);
+   text('CHAVE PIX',51,Math.min(end-9,278),9,true);
+   lines(pix.pixKey,51,Math.min(end-23,263),52,10);
+   qr(code,403,240,138);
+   text('PIX COPIA E COLA',36,195,10,true);
+   String(code).match(/.{1,90}/g).forEach((part,i)=>text(part,36,178-13*i,9,false,undefined,'F3'));
+   text('Este documento é uma cobrança via Pix. Sem valor fiscal.',36,52,9);
+ });
+}
+
+(() => {
+ const form=$('avulsoReceiptForm');
+ const open=button('Recibo',()=>{
+   form.reset();
+   form.elements.issuer.value=state.store?.storeName||'';
+   form.elements.issuerDoc.value=state.store?.taxId||'';
+   form.elements.date.value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   show('avulsoReceiptDialog');
+ });
+ open.id='avulsoReceiptBtn';
+ document.querySelector('.lc-sidebar').append(open);
+ form.addEventListener('submit',event=>{
+   event.preventDefault();
+   const error=$('avulsoReceiptError');
+   error.textContent='';
+   try{
+     const data=Object.fromEntries(new FormData(form));
+     const received=requireAmount(data.value,true);
+     if(!data.issuer.trim()||!data.payer.trim()||!data.reason.trim())throw Error('Preencha emitente, pagador e descrição.');
+     const pdf=lcDocumentPdf('Recibo de pagamento',({text,rectangle,lines,cell})=>{
+       text('DATA DO RECEBIMENTO',409,799,10,true);
+       text(monthlyDate(data.date),409,779,15,true);
+       cell('QUEM RECEBEU',[data.issuer,data.issuerDoc].filter(Boolean).join(' | '),36,633,523,72);
+       cell('QUEM PAGOU',[data.payer,data.payerDoc].filter(Boolean).join(' | '),36,554,523,72);
+       rectangle(36,466,523,75);
+       text('VALOR RECEBIDO',50,520,10,true);
+       text(money(received),50,488,23,true);
+       text('FORMA DE PAGAMENTO',345,520,10,true);
+       text(data.method,345,492,12,true);
+       text('REFERENTE A',36,436,10,true);
+       lines(data.reason,36,414,76);
+       rectangle(36,160,300,1,'0.69 0.62 0.73');
+       text('Assinatura do recebedor',36,141,10);
+       text('Recibo particular. Sem valor fiscal.',36,48,9);
+     });
+     download('ListCaixa_Recibo_'+data.date+'.pdf','application/pdf',pdf);
+   }catch(problem){error.textContent=problem.message;}
+ });
+})();
+
+(() => {
+ const sidebar=document.querySelector('.lc-sidebar');
+ const nav=sidebar.querySelector('nav');
+ const groups=[
+   ['Operação',[['catalogBtn','M3 7h18v13H3zM3 9l3-5h12l3 5M9 12h6'],['salesBtn','M4 4v16h16M7 14l4-4 4 2 4-6'],['registerBtn','M3 8h18v11H3zM3 11h18M15 15h3']]],
+   ['Financeiro',[['fiadosBtn','M4 6h16v12H4zM8 6v12M12 12h5'],['mensaisBtn','M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h2m4 0h2']]],
+   ['Documentos',[['budgetBtn','M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7'],['avulsoReceiptBtn','M5 3h14v18l-3-2-4 2-4-2-3 2zM8 8h8m-8 4h8m-8 4h4']]],
+   ['Configurações',[['storeBtn','M5 3h14v18l-3-2-4 2-4-2-3 2zM8 8h8m-8 4h8'],['pixBtn','M12 3l9 9-9 9-9-9zM8 12l4-4 4 4-4 4z']]]
+ ];
+ const assigned=new Set(groups.flatMap(group=>group[1].map(item=>item[0])));
+ const remaining=[...nav.querySelectorAll('button')].filter(control=>!assigned.has(control.id));
+ for(const [title,items] of groups){
+   const section=node('div',undefined,'lc-nav-group');
+   section.append(node('p',title,'lc-nav-label'));
+   for(const [id,path] of items){
+     const control=$(id);
+     if(!control)continue;
+     control.querySelectorAll('svg,.menuIcon,i.fa-solid').forEach(icon=>icon.remove());
+     control.classList.remove('lc-fiados-nav');
+     control.insertAdjacentHTML('afterbegin','<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="'+path+'"/></svg>');
+     section.append(control);
+   }
+   if(title==='Configurações')section.append(...remaining);
+   nav.append(section);
+ }
 })();

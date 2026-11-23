@@ -414,3 +414,23 @@ main{max-width:none;margin:0 0 0 238px;padding:26px 28px 110px}.top{background:t
 .lc-month-card {padding:12px;border:1px solid #e8e0ef;border-radius:10px;margin-top:9px}
 .lc-month-card p {overflow-wrap:anywhere;margin:5px 0}
 .lc-month-card .pill {white-space:nowrap}
+
+#avulsoReceiptDialog textarea {width:100%;font:inherit;border:1px solid #dfd5e7;border-radius:8px;padding:8px;resize:vertical}
+#mensaisDialog {width:min(960px,calc(100% - 24px))}
+.lc-month-filters {display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
+.lc-month-details {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:#f8f4fb;border-radius:8px;padding:9px;margin:9px 0}
+.lc-month-details dt {font-size:.82rem;color:#6a5974}
+.lc-month-details dd {margin:0;font-weight:750;overflow-wrap:anywhere}
+.lc-month-pill.paid {background:#e5f5ec;color:#176239}
+.lc-month-pill.partial {background:#f9efd9;color:#765012}
+.lc-month-pill.pending {background:#fae8ef;color:#852d50}
+@media(max-width:530px){.lc-month-details{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:851px){
+ .lc-sidebar{padding:16px 11px;background:#fff}
+ .lc-sidebar nav{gap:12px}
+ .lc-sidebar .lc-nav-group{display:grid;gap:3px;border-top:1px solid #eee8f1;padding-top:8px}
+ .lc-sidebar .lc-nav-label{font-size:.71rem;letter-spacing:.055em;text-transform:uppercase;color:#796382;padding:0 10px;margin:0 0 2px;font-weight:750}
+ .lc-sidebar nav .lc-nav-group button{display:flex;align-items:center;gap:9px;min-height:40px;padding:8px 9px;background:transparent!important;border:1px solid transparent!important;border-radius:8px;color:#302039!important;font-size:.86rem;font-weight:650;margin:0;text-align:left}
+ .lc-sidebar nav .lc-nav-group button:hover,.lc-sidebar nav .lc-nav-group button:focus-visible{background:#f3eaf7!important;color:#4c176b!important;border-color:#eaddf2!important}
+ .lc-sidebar nav .lc-nav-group button svg,.lc-sidebar nav .lc-nav-group button .menuIcon{flex:0 0 19px;width:19px;color:#673084;margin:0}
+}

@@ -314,10 +314,19 @@ to represent the company, product, or service to which they refer.**
  <p class="error" role="status"></p>
  <label>Filtrar catálogo<input id="catalogSearch" placeholder="Nome ou código"></label><div id="catalogList" class="list"></div>
 </dialog>
-<dialog id="mensaisDialog" aria-labelledby="mensaisTitle">
+<dialog id="avulsoReceiptDialog" aria-labelledby="avulsoReceiptTitle">
+ <div class="row"><h2 id="avulsoReceiptTitle">Emitir recibo</h2><button type="button" data-close>Fechar</button></div>
+ <p class="hint">Preencha os dados para baixar o PDF. O recibo não é salvo no sistema.</p>
+ <form id="avulsoReceiptForm">
+  <div class="fields"><label>Quem recebeu<input name="issuer" maxlength="100" required></label><label>CPF ou CNPJ do recebedor<input name="issuerDoc" maxlength="30"></label><label>Quem pagou<input name="payer" maxlength="100" required></label><label>CPF ou CNPJ do pagador<input name="payerDoc" maxlength="30"></label><label>Valor recebido (R$)<input name="value" inputmode="decimal" required></label><label>Data do recebimento<input name="date" type="date" required></label><label>Forma de pagamento<select name="method"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label></div>
+  <label>Referente a<textarea name="reason" required maxlength="450" rows="3"></textarea></label><button type="submit" class="primary">Baixar recibo em PDF</button>
+ </form><p id="avulsoReceiptError" class="error" role="status"></p>
+</dialog>
+<dialog id="mensaisDialog"  aria-labelledby="mensaisTitle">
  <div class="row"><h2 id="mensaisTitle">Receber mensal</h2><button type="button" data-close>Fechar</button></div>
  <div class="row lc-month-actions"><label>Competência<input id="mensaisMonth" type="month" required></label><button type="button" id="mensaisNew" class="primary">Novo cliente</button><button type="button" id="mensaisReload">Atualizar</button></div>
  <div class="lc-month-metrics"><div class="metric">Total do mês<strong id="mensaisTotal">—</strong></div><div class="metric">Recebido<strong id="mensaisReceived">—</strong></div><div class="metric">Saldo a receber<strong id="mensaisBalance">—</strong></div><div class="metric">Pendentes<strong id="mensaisPending">—</strong></div></div>
+ <div class="lc-month-filters"><label>Buscar cliente<input id="mensaisSearch" type="search" placeholder="Nome, documento ou telefone"></label><label>Situação<select id="mensaisFilter"><option value="all">Todas</option><option value="pending">Pendente</option><option value="partial">Parcial</option><option value="paid">Pago</option></select></label></div>
  <p id="mensaisStatus" role="status"></p><div id="mensaisList"></div>
 </dialog>
 <dialog id="mensaisClient" aria-labelledby="mensaisClientTitle">
@@ -508,6 +517,7 @@ to represent the company, product, or service to which they refer.**
  <div class="lc-more-links">
   <button type="button" data-mobile-target="registerBtn">Caixa e movimentos</button>
   <button type="button" data-mobile-target="mensaisBtn">Receber mensal</button>
+  <button type="button" data-mobile-target="avulsoReceiptBtn">Recibo</button>
   <button type="button" data-mobile-target="budgetBtn">Orçamentos</button>
   <button type="button" data-mobile-target="storeBtn">Personalizar comprovante</button>
   <button type="button" data-mobile-target="pixBtn">Configurar Pix</button>
