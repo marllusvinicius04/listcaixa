@@ -301,6 +301,7 @@ to represent the company, product, or service to which they refer.**
   <div class="fields">
    <label>Código interno<input name="sku" maxlength="25" required></label>
    <label>Código de barras<input name="barcode" maxlength="32" inputmode="numeric" pattern="[0-9]+"></label>
+   <button type="button" id="openBarcodeScanner">Leitor de código de barras</button>
    <label>Preço unitário (R$)<input name="price" inputmode="decimal" required></label>
    <label>Estoque (unidades)<input name="stock" type="number" min="0" max="999999" step="1" required></label>
   </div>
@@ -312,6 +313,12 @@ to represent the company, product, or service to which they refer.**
  </form>
  <p class="error" role="status"></p>
  <label>Filtrar catálogo<input id="catalogSearch" placeholder="Nome ou código"></label><div id="catalogList" class="list"></div>
+</dialog>
+<dialog id="barcodeScanner" aria-labelledby="barcodeScannerTitle">
+ <div class="row"><h2 id="barcodeScannerTitle">Leitor de código de barras</h2><button type="button" data-close>Voltar</button></div>
+ <video id="barcodeVideo" autoplay muted playsinline aria-label="Prévia da câmera"></video>
+ <p id="barcodeMessage" role="status"></p>
+ <button type="button" id="retryBarcodeScanner" hidden>Tentar novamente</button>
 </dialog>
 <dialog id="discountDialog"><div class="row"><h2>Desconto da venda</h2><button data-close>Voltar</button></div>
  <form id="discountForm"><label>Selecionar cupom cadastrado<select name="code" id="availableCoupons" required><option value="">Selecione um cupom...</option></select></label><button class="primary">Aplicar cupom</button> <button type="button" id="removeDiscount">Remover desconto</button></form>

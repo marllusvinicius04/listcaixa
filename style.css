@@ -399,3 +399,11 @@ main{max-width:none;margin:0 0 0 238px;padding:26px 28px 110px}.top{background:t
   #budgetDialog .b-desc { grid-column: 1 / -1; }
   .lc-variant-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+#openBarcodeScanner {display:none}
+#barcodeScanner {width:min(520px,calc(100% - 24px))}
+#barcodeVideo {display:block;width:100%;max-height:55dvh;aspect-ratio:4/3;object-fit:contain;background:#241231;border-radius:10px}
+#barcodeMessage {margin:10px 0 0}
+@media screen and (max-width:1024px) and (pointer:coarse) {
+ #openBarcodeScanner {display:inline-flex;align-items:center;justify-content:center;min-height:44px;grid-column:1 / -1;justify-self:start}
+}
