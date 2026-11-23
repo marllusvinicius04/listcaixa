@@ -3560,27 +3560,34 @@ function lcDocumentPdf(title, build){
 
 function lcMonthlyGuide(item,pix,code){
  const company=store();
+ const purple='0.20 0.07 0.29', pale='0.97 0.94 0.99', white='1 1 1';
  return lcDocumentPdf('Guia de pagamento',({text,rectangle,lines,cell,qr})=>{
-   text('COBRANÇA MENSAL VIA PIX',410,785,10,true);
-   cell('COMPETÊNCIA',item.period,36,656,170);
-   cell('VENCIMENTO',monthlyDate(item.due),206,656,170);
-   cell('VALOR A PAGAR',money(item.balance),376,656,183);
-   cell('EMITENTE',[company.storeName,company.taxId,company.phone].filter(Boolean).join(' | '),36,582,523,68);
-   cell('PAGADOR',[item.c.name,item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' | '),36,488,523,88);
-   cell('VALOR DA MENSALIDADE',money(item.amount),36,432,262);
-   cell('TOTAL JÁ RECEBIDO',money(item.received),298,432,261);
-   rectangle(36,221,523,191);
-   text('PAGAMENTO POR PIX',51,389,12,true);
-   text('Escaneie o QR Code no aplicativo do seu banco.',51,365,11);
-   text('Confira o recebedor e o saldo antes de confirmar.',51,348,10);
-   text('RECEBEDOR',51,323,9,true);
-   const end=lines([pix.receiver,pix.bank,pix.city].filter(Boolean).join(' | '),51,305,52);
-   text('CHAVE PIX',51,Math.min(end-9,278),9,true);
-   lines(pix.pixKey,51,Math.min(end-23,263),52,10);
-   qr(code,403,240,138);
-   text('PIX COPIA E COLA',36,195,10,true);
-   String(code).match(/.{1,90}/g).forEach((part,i)=>text(part,36,178-13*i,9,false,undefined,'F3'));
-   text('Este documento é uma cobrança via Pix. Sem valor fiscal.',36,52,9);
+   text('MENSALIDADE  /  PIX',410,791,10,true);
+   text('Use o aplicativo do seu banco para pagar.',36,699,11);
+   rectangle(36,608,523,72,purple);
+   text('VALOR A PAGAR',52,655,11,true,white);
+   text(money(item.balance),52,627,25,true,white);
+   text('VENCIMENTO',386,655,10,true,white);
+   text(monthlyDate(item.due),386,631,19,true,white);
+   cell('COMPETÊNCIA',item.period,36,549,171);
+   cell('MENSALIDADE',money(item.amount),207,549,176);
+   cell('JÁ RECEBIDO',money(item.received),383,549,176);
+   cell('EMITENTE',[company.storeName,company.taxId,company.phone].filter(Boolean).join(' | '),36,477,523,65);
+   cell('PAGADOR',[item.c.name,item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' | '),36,384,523,86);
+   rectangle(36,178,523,189,pale);
+   text('PAGUE COM PIX',51,345,12,true);
+   text('Escaneie o QR Code ou copie o código abaixo.',51,322,10);
+   text('Confira o valor e o recebedor antes de pagar.',51,307,10);
+   text('RECEBEDOR',51,283,9,true);
+   lines([pix.receiver,pix.bank,pix.city].filter(Boolean).join(' | '),51,266,47,10);
+   text('CHAVE PIX',51,227,9,true);
+   lines(pix.pixKey,51,211,47,10);
+   qr(code,397,205,144);
+   text('ESCANEIE NO SEU BANCO',401,191,8,true);
+   rectangle(36,64,523,99,'0.83 0.78 0.87',true);
+   text('PIX COPIA E COLA',49,144,10,true);
+   String(code).match(/.{1,88}/g).forEach((part,i)=>text(part,49,125-i*13,9,false,undefined,'F3'));
+   text('Guarde o comprovante bancário após o pagamento.',36,40,9);
  });
 }
 
@@ -3604,20 +3611,22 @@ function lcMonthlyGuide(item,pix,code){
      const received=requireAmount(data.value,true);
      if(!data.issuer.trim()||!data.payer.trim()||!data.reason.trim())throw Error('Preencha emitente, pagador e descrição.');
      const pdf=lcDocumentPdf('Recibo de pagamento',({text,rectangle,lines,cell})=>{
-       text('DATA DO RECEBIMENTO',409,799,10,true);
-       text(monthlyDate(data.date),409,779,15,true);
-       cell('QUEM RECEBEU',[data.issuer,data.issuerDoc].filter(Boolean).join(' | '),36,633,523,72);
-       cell('QUEM PAGOU',[data.payer,data.payerDoc].filter(Boolean).join(' | '),36,554,523,72);
-       rectangle(36,466,523,75);
-       text('VALOR RECEBIDO',50,520,10,true);
-       text(money(received),50,488,23,true);
-       text('FORMA DE PAGAMENTO',345,520,10,true);
-       text(data.method,345,492,12,true);
-       text('REFERENTE A',36,436,10,true);
-       lines(data.reason,36,414,76);
-       rectangle(36,160,300,1,'0.69 0.62 0.73');
-       text('Assinatura do recebedor',36,141,10);
-       text('Recibo particular. Sem valor fiscal.',36,48,9);
+       text('DATA DO RECEBIMENTO',413,798,10,true);
+       text(monthlyDate(data.date),413,778,14,true);
+       cell('RECEBEDOR',[data.issuer.trim(),data.issuerDoc.trim()].filter(Boolean).join(' | '),36,641,523,64);
+       rectangle(36,560,523,67,'0.20 0.07 0.29');
+       text('VALOR RECEBIDO',51,604,10,true,'1 1 1');
+       text(money(received),51,576,24,true,'1 1 1');
+       text('FORMA DE PAGAMENTO',355,604,10,true,'1 1 1');
+       text(data.method,355,580,14,true,'1 1 1');
+       const payer=data.payer.trim()+(data.payerDoc.trim()?' (CPF/CNPJ '+data.payerDoc.trim()+')':'');
+       const reason=data.reason.trim().replace(/[.]+$/,'');
+       const declaration='Recebemos de '+payer+' a quantia de '+money(received)+', correspondente a '+reason+'.';
+       text('DECLARAÇÃO DE RECEBIMENTO',36,523,10,true);
+       lines(declaration,36,495,76,12);
+       rectangle(36,188,330,1,'0.70 0.62 0.74');
+       lines(data.issuer.trim(),36,167,57,10);
+       text('Assinatura do recebedor',36,129,10);
      });
      download('ListCaixa_Recibo_'+data.date+'.pdf','application/pdf',pdf);
    }catch(problem){error.textContent=problem.message;}
