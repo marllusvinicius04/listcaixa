@@ -407,3 +407,10 @@ main{max-width:none;margin:0 0 0 238px;padding:26px 28px 110px}.top{background:t
 @media screen and (max-width:1024px) and (pointer:coarse) {
  #openBarcodeScanner {display:inline-flex;align-items:center;justify-content:center;min-height:44px;grid-column:1 / -1;justify-self:start}
 }
+
+#mensaisDialog {width:min(880px,calc(100% - 24px))}
+.lc-month-actions {flex-wrap:wrap;justify-content:flex-start;gap:8px}
+.lc-month-metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-top:10px}
+.lc-month-card {padding:12px;border:1px solid #e8e0ef;border-radius:10px;margin-top:9px}
+.lc-month-card p {overflow-wrap:anywhere;margin:5px 0}
+.lc-month-card .pill {white-space:nowrap}

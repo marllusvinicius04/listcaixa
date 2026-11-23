@@ -2841,6 +2841,26 @@ window.listCaixaTestarServidor = async function() {
   catch(e){throw new Error('Não foi possível salvar os dados. Verifique a conexão.');}
   finally{clearTimeout(timer);}
  }
+ window.lcMensais={
+  async list(){
+   if(!window.LC_CLOUD_READY)throw new Error('Conecte o sistema para consultar as mensalidades.');
+   try{return await loadRemote('mensaisList');}
+   catch(_){throw new Error('Não foi possível carregar Mensais. Confira a instalação do módulo e a conexão.');}
+  },
+  async write(change){
+   if(!window.LC_CLOUD_READY)throw new Error('Conecte o sistema antes de salvar.');
+   const revision=newId();
+   await post({...change,action:'mensaisWrite',apiKey:key,revision});
+   for(let attempt=0;attempt<5;attempt++){
+    const result=await this.list();
+    const record=result.clients.find(c=>c.id===change.id);
+    if(record?.revision===revision)return result;
+    if((record?.revision||'')!==change.base)throw new Error('O cadastro mudou. Atualize a lista antes de tentar novamente.');
+    await new Promise(resolve=>setTimeout(resolve,400+attempt*200));
+   }
+   throw new Error('O salvamento não foi confirmado. Atualize a lista e confira o registro.');
+  }
+ };
  async function writeRemote(snapshot,removedProductIds,operatorId){
   const revision='lc-'+Date.now()+'-'+(++seq)+'-'+Math.random().toString(36).slice(2);
   await post({action:'stateSave',apiKey:key,version:'2.5.2',baseRevision,operatorId,removedProductIds,state:{...snapshot,_lcRevision:revision}});
@@ -3327,4 +3347,201 @@ nuclear facility.
  catalog.addEventListener('close',()=>{if(dialog.open)dialog.close();stop();});
  mobile.addEventListener('change',()=>{if(!mobile.matches && dialog.open)dialog.close();});
  window.addEventListener('pagehide',()=>{if(dialog.open)dialog.close();stop();});
+})();
+
+(() => {
+ const panel=$('mensaisDialog'),month=$('mensaisMonth'),list=$('mensaisList');
+ const clientForm=$('mensaisClientForm'),payForm=$('mensaisPayForm');
+ let clients=[], editing=null, collecting=null, busy=false;
+ const nav=button('Receber mensal',open,'lc-fiados-nav');
+ nav.id='mensaisBtn';
+ document.querySelector('.lc-sidebar').append(nav);
+
+ function setBusy(value){
+   busy=value;
+   for(const id of ['mensaisNew','mensaisReload','mensaisPaid','mensaisUnpaid'])$(id).disabled=value;
+   for(const form of [clientForm,payForm])form.querySelector('button[type=submit],button:not([type])').disabled=value;
+ }
+ async function open(){
+   if(panel.open)return;
+   show('mensaisDialog');
+   await refresh();
+ }
+ async function refresh(){
+   if(busy)return;
+   setBusy(true);
+   $('mensaisStatus').textContent='Carregando mensalidades…';
+   try {
+     const data=await window.lcMensais.list();
+     clients=data.clients.filter(c=>!c.archived);
+     if(!month.value)month.value=data.day.slice(0,7);
+     render();
+   }catch(err){$('mensaisStatus').textContent=err.message;}
+   finally{setBusy(false);}
+ }
+ function entry(c){
+   const period=month.value;
+   const term=c.terms.filter(t=>t.month<=period).at(-1);
+   if(!term)return null;
+   const paid=c.payments[period];
+   const amount=paid?.amount??term.amount, day=paid?.day??term.day;
+   const [year,m]=period.split('-').map(Number);
+   const last=new Date(Date.UTC(year,m,0)).getUTCDate();
+   const due=period+'-'+String(Math.min(day,last)).padStart(2,'0');
+   const received=paid?.received??0;
+   return {c,period,due,amount,received,balance:amount-received};
+ }
+ function render(){
+   const entries=month.value?clients.map(entry).filter(Boolean):[];
+   const total=entries.reduce((sum,v)=>sum+v.amount,0);
+   const received=entries.reduce((sum,v)=>sum+v.received,0);
+   $('mensaisTotal').textContent=money(total);
+   $('mensaisReceived').textContent=money(received);
+   $('mensaisBalance').textContent=money(total-received);
+   $('mensaisPending').textContent=String(entries.filter(v=>v.balance>0).length);
+   $('mensaisStatus').textContent=entries.length?'':'Nenhuma mensalidade nesta competência.';
+   list.replaceChildren(...entries.map(item=>{
+     const row=node('article',undefined,'lc-month-card');
+     const head=node('div',undefined,'row');
+     const label=item.balance===0?'Pago':item.received>0?'Parcial':'Pendente';
+     head.append(node('strong',item.c.name),node('span',label,'pill'));
+     const actions=node('div',undefined,'row lc-month-actions');
+     actions.append(button('Recebimento',()=>editPayment(item)),button('Editar',()=>editClient(item.c)),button('Excluir',()=>archive(item.c),'danger'));
+     if(item.balance>0)actions.prepend(button('Baixar cobrança em PDF',()=>charge(item),'primary'));
+     row.append(head,node('p',[item.c.kind,item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' · '),'hint'),
+       node('p','Vence em '+monthlyDate(item.due)+' · Mensalidade '+money(item.amount)+' · Recebido '+money(item.received)+' · Saldo '+money(item.balance)),actions);
+     return row;
+   }));
+ }
+ function editClient(client){
+   if(busy)return;
+   editing=client;
+   clientForm.reset();
+   if(client){
+     for(const name of ['name','kind','document','phone','address'])clientForm.elements.namedItem(name).value=client[name];
+     const term=client.terms.at(-1);
+     clientForm.elements.amount.value=decimal(term.amount);
+     clientForm.elements.day.value=term.day;
+   }
+   $('mensaisClientError').textContent='';
+   show('mensaisClient');
+ }
+ function editPayment(item){
+   if(busy)return;
+   collecting=item;
+   $('mensaisPaySummary').textContent=item.c.name+' · '+item.period+' · Mensalidade '+money(item.amount)+' · Saldo '+money(item.balance);
+   payForm.elements.received.value=decimal(item.received);
+   $('mensaisPaymentError').textContent='';
+   show('mensaisPay');
+ }
+ async function mutate(operation,client,data,done,errorId){
+   if(busy)return;
+   setBusy(true);
+   $(errorId).textContent='';
+   try{
+     const result=await window.lcMensais.write({operation,id:client?.id||newId(),base:client?.revision||'',...data});
+     clients=result.clients.filter(c=>!c.archived);
+     render();
+     done?.close();
+     $('mensaisStatus').textContent='Alteração salva.';
+   }catch(err){$(errorId).textContent=err.message;}
+   finally{setBusy(false);}
+ }
+ function archive(client){
+   if(!busy && confirm('Excluir “'+client.name+'” das mensalidades? O registro será arquivado na aba Mensais.')){
+     mutate('archive',client,{},null,'mensaisStatus');
+   }
+ }
+ function setPayment(received){
+   if(!collecting)return;
+   if(received>collecting.amount){$('mensaisPaymentError').textContent='O valor recebido não pode exceder a mensalidade.';return;}
+   mutate('payment',collecting.c,{month:collecting.period,received},$('mensaisPay'),'mensaisPaymentError');
+ }
+ function charge(item){
+   if(busy)return;
+   try{
+     const source=state.pix;
+     if(!source?.pixKey||!pixText(source.receiver,25)||!pixText(source.city,15))throw Error('Configure o Pix da loja em Configurar Pix para emitir a cobrança.');
+     const pix={...source,pixKey:normalizePixKey(source.pixKey)};
+     const reference=('M'+item.period+item.c.id).replace(/[^a-z0-9]/gi,'').slice(0,25);
+     const code=pixPayload(pix,item.balance,reference,'Mensalidade '+item.period);
+     download('ListCaixa_Cobranca_'+item.period+'_'+item.c.id+'.pdf','application/pdf',makeChargePdf(item,pix,code));
+     $('mensaisStatus').textContent='Documento de cobrança gerado.';
+   }catch(err){$('mensaisStatus').textContent=err.message;}
+ }
+ function makeChargePdf(item,pix,code){
+   const profile=store(), commands=[];
+   function escape(value){
+     return Array.from(String(value),char=>{
+       const n=char.charCodeAt(0);
+       if(n>255)return '?';
+       return n<32||n>126||/[()\\]/.test(char)?'\\'+n.toString(8).padStart(3,'0'):char;
+     }).join('');
+   }
+   function text(value,x,y,size=11,bold=false,color='0.16 0.09 0.20'){
+     commands.push('BT /'+(bold?'F2':'F1')+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
+   }
+   function block(value,y,width=76,size=11){
+     const lines=String(value).match(new RegExp('.{1,'+width+'}','g'))||[];
+     lines.forEach((line,index)=>text(line,36,y-index*14,size));
+     return y-lines.length*14;
+   }
+   commands.push('0.19 0.07 0.25 rg 0 742 595 100 re f');
+   text('LISTCAIXA  /  CONTAS A RECEBER',36,807,10,true,'1 1 1');
+   text('Documento de cobrança mensal',36,771,24,true,'1 1 1');
+   text('EMITENTE',36,712,10,true);
+   let y=block(profile.storeName,692);
+   y=block([profile.taxId,profile.phone,profile.address].filter(Boolean).join(' | '),y);
+   text('CLIENTE',36,y-12,10,true);
+   y=block(item.c.name,y-30);
+   y=block([item.c.document,item.c.phone,item.c.address].filter(Boolean).join(' | '),y);
+   text('Competência '+item.period+'     Vencimento '+monthlyDate(item.due),36,y-12,11,true);
+   text('Mensalidade '+money(item.amount)+'     Já recebido '+money(item.received),36,y-32);
+   text('SALDO A PAGAR  '+money(item.balance),36,y-62,18,true);
+   y-=93;
+   text('PAGAMENTO POR PIX',36,y,11,true);
+   y=block('Recebedor: '+pix.receiver,y-18);
+   y=block('Chave Pix: '+pix.pixKey,y);
+   y=block([pix.bank,pix.city].filter(Boolean).join(' | '),y);
+   const qr=new PixQRCode(-1,1);
+   qr.addData(code);qr.make();
+   const count=qr.getModuleCount(),scale=132/(count+8), qy=y-140;
+   commands.push('1 1 1 rg 36 '+qy+' 132 132 re f','0 0 0 rg');
+   for(let r=0;r<count;r++)for(let c=0;c<count;c++)if(qr.isDark(r,c)){
+     commands.push((36+(c+4)*scale).toFixed(5)+' '+(qy+(count-r+3)*scale).toFixed(5)+' '+scale.toFixed(5)+' '+scale.toFixed(5)+' re');
+   }
+   commands.push('f');
+   text('Pix Copia e Cola',36,qy-14,10,true);
+   block(code,qy-30,88,9);
+   text('Documento de cobrança. Sem valor fiscal. Pagamento sujeito à conferência.',36,29,9);
+   const stream=commands.join('\n')+'\n';
+   const objects=[
+     '<< /Type /Catalog /Pages 2 0 R >>',
+     '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
+     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+     '<< /Length '+stream.length+' >>\nstream\n'+stream+'endstream'
+   ];
+   let pdf='%PDF-1.4\n';
+   const offsets=['0000000000 65535 f \n'];
+   objects.forEach((object,index)=>{
+     offsets.push(String(pdf.length).padStart(10,'0')+' 00000 n \n');
+     pdf+=(index+1)+' 0 obj\n'+object+'\nendobj\n';
+   });
+   const xref=pdf.length;
+   return pdf+'xref\n0 '+offsets.length+'\n'+offsets.join('')+'trailer\n<< /Size '+offsets.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+ }
+ $('mensaisNew').onclick=()=>editClient(null);
+ $('mensaisReload').onclick=refresh;
+ month.onchange=render;
+ form('mensaisClientForm',values=>{
+   const client={...values,amount:requireAmount(values.amount,true),day:Number(values.day)};
+   mutate('save',editing,{client},$('mensaisClient'),'mensaisClientError');
+ });
+ form('mensaisPayForm',values=>setPayment(requireAmount(values.received)));
+ $('mensaisPaid').onclick=()=>setPayment(collecting.amount);
+ $('mensaisUnpaid').onclick=()=>{
+   if(collecting.received===0||confirm('Zerar o valor recebido desta mensalidade?'))setPayment(0);
+ };
 })();

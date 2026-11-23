@@ -314,6 +314,23 @@ to represent the company, product, or service to which they refer.**
  <p class="error" role="status"></p>
  <label>Filtrar catálogo<input id="catalogSearch" placeholder="Nome ou código"></label><div id="catalogList" class="list"></div>
 </dialog>
+<dialog id="mensaisDialog" aria-labelledby="mensaisTitle">
+ <div class="row"><h2 id="mensaisTitle">Receber mensal</h2><button type="button" data-close>Fechar</button></div>
+ <div class="row lc-month-actions"><label>Competência<input id="mensaisMonth" type="month" required></label><button type="button" id="mensaisNew" class="primary">Novo cliente</button><button type="button" id="mensaisReload">Atualizar</button></div>
+ <div class="lc-month-metrics"><div class="metric">Total do mês<strong id="mensaisTotal">—</strong></div><div class="metric">Recebido<strong id="mensaisReceived">—</strong></div><div class="metric">Saldo a receber<strong id="mensaisBalance">—</strong></div><div class="metric">Pendentes<strong id="mensaisPending">—</strong></div></div>
+ <p id="mensaisStatus" role="status"></p><div id="mensaisList"></div>
+</dialog>
+<dialog id="mensaisClient" aria-labelledby="mensaisClientTitle">
+ <div class="row"><h2 id="mensaisClientTitle">Cliente mensal</h2><button type="button" data-close>Voltar</button></div>
+ <form id="mensaisClientForm"><label>Nome da pessoa ou empresa<input name="name" required maxlength="100"></label>
+ <div class="fields"><label>Tipo<select name="kind"><option>Pessoa</option><option>Empresa</option></select></label><label>CPF ou CNPJ<input name="document" maxlength="30"></label><label>Telefone<input name="phone" type="tel" maxlength="35"></label><label>Endereço<input name="address" maxlength="120"></label><label>Mensalidade (R$)<input name="amount" inputmode="decimal" required></label><label>Dia de vencimento<input name="day" type="number" min="1" max="31" required></label></div>
+ <p class="hint">Quando o mês tem menos dias, o vencimento cai no último dia. Se já houve recebimento no mês, alterações de valor ou vencimento passam a valer no mês seguinte.</p><button class="primary">Salvar cliente</button></form><p class="error" id="mensaisClientError" role="status"></p>
+</dialog>
+<dialog id="mensaisPay" aria-labelledby="mensaisPayTitle">
+ <div class="row"><h2 id="mensaisPayTitle">Registrar recebimento</h2><button type="button" data-close>Voltar</button></div>
+ <p id="mensaisPaySummary"></p><form id="mensaisPayForm"><label>Total recebido nesta mensalidade (R$)<input name="received" inputmode="decimal" required></label><p class="hint">Informe o total acumulado, incluindo o que já foi recebido. Para voltar a pendente, zere o valor.</p>
+ <div class="row lc-month-actions"><button class="primary" type="submit">Salvar valor</button><button type="button" id="mensaisPaid">Marcar pago</button><button type="button" id="mensaisUnpaid">Marcar pendente</button></div></form><p class="error" id="mensaisPaymentError" role="status"></p>
+</dialog>
 <dialog id="barcodeScanner" aria-labelledby="barcodeScannerTitle">
  <div class="row"><h2 id="barcodeScannerTitle">Leitor de código de barras</h2><button type="button" data-close>Voltar</button></div>
  <video id="barcodeVideo" autoplay muted playsinline aria-label="Prévia da câmera"></video>
@@ -490,6 +507,7 @@ to represent the company, product, or service to which they refer.**
  <div class="row"><h2 id="lcMobileMoreTitle">Mais opções</h2><form method="dialog"><button type="submit">Fechar</button></form></div>
  <div class="lc-more-links">
   <button type="button" data-mobile-target="registerBtn">Caixa e movimentos</button>
+  <button type="button" data-mobile-target="mensaisBtn">Receber mensal</button>
   <button type="button" data-mobile-target="budgetBtn">Orçamentos</button>
   <button type="button" data-mobile-target="storeBtn">Personalizar comprovante</button>
   <button type="button" data-mobile-target="pixBtn">Configurar Pix</button>
