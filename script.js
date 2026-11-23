@@ -1880,6 +1880,13 @@ function renderAccount(){
  $('accountPay').disabled=!accessConfig;
  const link=$('accountCloseLink');
  const number=monthly.whatsapp;
+ const support=$('accountSupportLink');
+ support.hidden=!number;
+ if(number){
+   const business=profile.storeName?.trim();
+   const message='Olá! Preciso de suporte com o ListCaixa.'+(business?' Minha empresa é '+business+'.':'');
+   support.href='https://wa.me/'+number+'?text='+encodeURIComponent(message);
+ }else support.removeAttribute('href');
  link.hidden=!number;
  $('accountCloseHelp').hidden=Boolean(number);
  if(number){

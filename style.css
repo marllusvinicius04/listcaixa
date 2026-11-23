@@ -434,3 +434,5 @@ main{max-width:none;margin:0 0 0 238px;padding:26px 28px 110px}.top{background:t
  .lc-sidebar nav .lc-nav-group button:hover,.lc-sidebar nav .lc-nav-group button:focus-visible{background:#f3eaf7!important;color:#4c176b!important;border-color:#eaddf2!important}
  .lc-sidebar nav .lc-nav-group button svg,.lc-sidebar nav .lc-nav-group button .menuIcon{flex:0 0 19px;width:19px;color:#673084;margin:0}
 }
+
+.lc-account-links .lc-account-support{color:#fff;background:#087b49;border-radius:8px}
