@@ -2810,7 +2810,7 @@ for(const [id,d] of Object.entries(paths)){const b=el(id);if(!b)continue;b.query
 // Endereço do serviço ListCaixa.
 // O servidor exige LC_API_KEY para consultar/gravar dados. Nunca publique essa chave no HTML.
 window.LISTCAIXA_API = {
-  url: 'https://script.google.com/macros/s/AKfycbwgwBCQlnaomOoptmvH9epoAiqzPEysPuWI2XsQ8CXBiGgAYMdtEtZPLK2zgx0aPiDz/exec',
+  url: 'https://script.google.com/macros/s/AKfycbzr2Uj7pn0MksBVyeEZJXmdwDo8Um-WL8lJ2kgdz1NkJYBf7KicM9frERwj9ic-sQhE/exec',
   mode: 'cloud',
   storage: 'cloud',
   connected: false
