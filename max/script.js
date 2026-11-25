@@ -2016,7 +2016,11 @@ creditSelect.addEventListener('change',updateCredit);
 function updateCash(){
  const fields=$('checkoutForm').elements;
  const cash=fields.method.value==='Dinheiro';
- $('cashOnly').hidden=!cash;document.getElementById('fiadoFields').hidden=fields.method.value!=='Fiado';
+ const fiado=fields.method.value==='Fiado';
+ fields.buyerName.required=fiado;
+ $('buyerNameLabel').textContent=fiado?'Nome do comprador (obrigatório para fiado)':'Nome do comprador (opcional)';
+ $('cashOnly').hidden=!cash;
+ $('fiadoFields').hidden=!fiado;
  fields.received.required=cash;
  const received=amount(fields.received.value);
  $('change').textContent=received===null?'':received<total()?'Faltam '+money(total()-received):'Troco: '+money(received-total());
@@ -2027,6 +2031,7 @@ let savingSale=false;
 function confirmFinish(sale){
  const dialog=$('finishDialog');
  $('finishSummary').textContent=money(sale.amount)+' · '+sale.method;
+ if(sale.buyerName) $('finishSummary').textContent+=' · Comprador: '+sale.buyerName;
  if(sale.method==='Dinheiro') $('finishSummary').textContent+=' · Troco '+money(sale.received-sale.amount);
  if(sale.method==='Cartão de crédito'&&sale.installments) $('finishSummary').textContent+=' · '+sale.installments+'x sem juros';
  dialog.returnValue='back';
@@ -2065,7 +2070,8 @@ async function choosePayment(method){
 }
 function checkout(){
  if(savingSale) return;
- $('checkoutForm').reset();document.getElementById('fiadoCustomer').value='';document.getElementById('fiadoDue').value='';
+ $('checkoutForm').reset();
+ $('fiadoDue').value='';
  creditSelect.value='1';
  $('paymentTotal').textContent=money(total());
  const free=total()===0;
@@ -2096,10 +2102,11 @@ $('checkoutForm').onsubmit=async event=>{
    if(received<due) throw new Error('O valor recebido é menor que o total.');
    const quantities=new Map(state.cart.map(item=>[item.id,item.qty]));
    if(state.cart.some(item=>!item.manual&&(state.catalog.find(p=>p.id===item.id)?.stock??0)<item.qty)) throw new Error('Estoque insuficiente. Revise a venda.');
-   if(method==='Fiado'&&!document.getElementById('fiadoCustomer').value.trim()) throw new Error('Informe o nome do cliente para o fiado.');
+   const buyerName=fields.buyerName.value.trim();
+   if(method==='Fiado'&&!buyerName) throw new Error('Informe o nome do cliente para o fiado.');
    const installments=method==='Cartão de crédito'?creditParts():null;
    const installmentAmounts=installments?creditAmounts(due,installments):null;
-   const sale={number:state.nextNumber,date:new Date().toISOString(),registerId:state.register.id,operatorId:state.register.operatorId||activeOperatorId,operator:state.register.operator,method,installments,installmentAmounts,amount:due,received,discount:state.discount,coupon:state.appliedCoupon??null,items:state.cart,fiadoCustomer:method==='Fiado'?document.getElementById('fiadoCustomer').value.trim():null,fiadoDue:method==='Fiado'?document.getElementById('fiadoDue').value:null};
+   const sale={number:state.nextNumber,date:new Date().toISOString(),registerId:state.register.id,operatorId:state.register.operatorId||activeOperatorId,operator:state.register.operator,method,installments,installmentAmounts,amount:due,received,discount:state.discount,coupon:state.appliedCoupon??null,items:state.cart,buyerName:buyerName||null,fiadoCustomer:method==='Fiado'?buyerName:null,fiadoDue:method==='Fiado'?document.getElementById('fiadoDue').value:null};
    savingSale=true;
    const attempt=paymentAttempt;
    $('confirmSale').disabled=true;
@@ -2118,6 +2125,9 @@ $('checkoutForm').onsubmit=async event=>{
    $('confirmSale').disabled=false;
  }
 };
+function saleBuyerName(sale){
+ return sale.buyerName||sale.fiadoCustomer||'';
+}
 function receiptContent(target,sale,profile){
  function section(text,className){ target.append(node('p',text,className)); }
  function pair(label,value){
@@ -2144,6 +2154,8 @@ function receiptContent(target,sale,profile){
    section('Motivo: '+sale.cancellation.reason);
  }
  if(sale.operator) section('Operador: '+sale.operator);
+ const buyerName=saleBuyerName(sale);
+ if(buyerName) section('Comprador: '+buyerName);
  target.append(node('hr'));
  sale.items.forEach(item=>{
    section(item.name);
@@ -2523,6 +2535,8 @@ function renderSales(){
    const row=node('div',undefined,'row');
    const label=node('div','Nº '+sale.number+' · '+money(sale.amount));
    label.append(node('div',dateTime(sale.date)+' · '+sale.method,'hint'));
+   const buyerName=saleBuyerName(sale);
+   if(buyerName) label.append(node('div','Comprador: '+buyerName,'hint'));
    const controls=node('div',undefined,'row');
    controls.append(button('Comprovante',()=>{$('salesDialog').close(); receipt(sale);}));
    if(sale.cancellation) label.append(node('div','Cancelada · '+dateTime(sale.cancellation.date)+' · '+sale.cancellation.reason,'error'));

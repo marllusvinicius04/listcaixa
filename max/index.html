@@ -368,6 +368,7 @@ to represent the company, product, or service to which they refer.**
 <dialog id="checkoutDialog"><div class="row"><h2>Pagamento</h2><button data-close>Voltar</button></div>
  <form id="checkoutForm">
   <div class="metric">Total da venda<strong id="paymentTotal"></strong></div>
+  <label><span id="buyerNameLabel">Nome do comprador (opcional)</span><input name="buyerName" maxlength="90" autocomplete="off"></label>
   <input type="hidden" name="method">
   <div id="paymentChoice">
    <p>Escolha a forma de pagamento</p>
@@ -383,7 +384,7 @@ to represent the company, product, or service to which they refer.**
    </label>
    <div class="metric"><span>Parcelamento sem juros</span><strong id="creditPreview">1x</strong><small id="creditDetail"></small></div>
   </div>
-  <div id="fiadoFields" hidden><label>Cliente do fiado<input id="fiadoCustomer" maxlength="90" placeholder="Nome completo do cliente"></label><label>Vencimento<input id="fiadoDue" type="date"></label><p class="hint">A venda será registrada como valor a receber, sem entrada no caixa.</p></div>
+  <div id="fiadoFields" hidden><label>Vencimento<input id="fiadoDue" type="date"></label><p class="hint">A venda será registrada como valor a receber, sem entrada no caixa.</p></div>
   <div id="pixLoading" class="busy" role="status" hidden><span class="spinner" aria-hidden="true"></span>Gerando QR Code Pix…</div>
   <div id="pixOnly" class="pixBox" hidden>
    <p id="pixDetails"></p><canvas id="pixQR" aria-label="QR Code Pix para pagar o total da venda" role="img" hidden></canvas>
